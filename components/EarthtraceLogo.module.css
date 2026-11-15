@@ -1,0 +1,6 @@
+a.logo{display:flex;align-items:center;gap:11px;text-align:left;padding:0;font-family:Manrope,sans-serif;font-size:19px;font-weight:800;letter-spacing:1.3px;line-height:normal;color:var(--text,#edf3ee);text-decoration:none;white-space:nowrap;flex-shrink:0}
+.logo .trace{color:var(--green,#b6e5bd)}
+.logo .tagline{display:block;font-family:Manrope,sans-serif;font-size:7px;letter-spacing:2px;color:#93a7aa;margin-top:4px;font-weight:500;line-height:normal}
+.logo .symbol{display:grid;place-items:center;border:1px solid #b6e5bd75;width:42px;height:42px;border-radius:50%;color:var(--green,#b6e5bd);position:relative;flex-shrink:0}
+.symbol:after{content:'';position:absolute;border:1px solid #b6e5bd44;border-radius:50%;width:48px;height:22px;transform:rotate(-40deg)}
+@media(max-width:760px){a.logo{font-size:15px;gap:9px}.logo .symbol{height:34px;width:34px}.symbol:after{width:40px;height:19px}.logo .tagline{font-size:5px;letter-spacing:1.5px}}
