@@ -1,0 +1,26 @@
+EARTHTRACE - VS Code / Windows
+
+1. Install Node.js 22 or newer.
+2. Extract this ZIP (do not run from inside the ZIP).
+3. Open the earthtrace folder in VS Code.
+4. Terminal > New Terminal. Run:
+
+   npm.cmd ci
+   npm.cmd run dev
+
+5. Open http://localhost:3000
+6. Choose Demo mode to use the supplied datasets without Firebase configuration.
+7. Stop with Ctrl+C.
+
+The application UI/source is unchanged. All tracked project files are included, with datasets, assets, trends, heat maps and AI backend. Dependencies are installed by npm ci; node_modules and build caches are intentionally excluded.
+
+Google login: copy .env.example to .env.local, fill Firebase Web configuration, enable Google authentication and authorize localhost. Restart the server. See README.md.
+
+AI replies: configure and run ai-backend using ai-backend/README.md, then set NEXT_PUBLIC_AI_API_URL in .env.local. Firebase login and backend credentials are required. No secrets are included.
+
+Python analysis service is optional: the default app calculates analysis in the browser. See README.md for backend setup.
+
+If port 3000 is busy: npm.cmd run dev -- --port 3001
+Open http://localhost:3001
+
+If npm reports certificate errors, fix the trusted CA/proxy setup on Windows or use a trusted network. Do not disable strict-ssl.
