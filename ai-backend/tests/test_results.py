@@ -114,4 +114,3 @@ def test_invalid_date_range_rejected():
             data, "rainfall", "test-id", "DEMO_DATA"
         )
 
-

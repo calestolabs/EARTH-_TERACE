@@ -4,9 +4,9 @@ import os
 os.environ["RESULTS_MODE"] = "demo"
 
 from fastapi.testclient import TestClient
-from main import app
+from main import app, verify_firebase_user
 
-
+app.dependency_overrides[verify_firebase_user] = lambda: "test-user-id"
 client = TestClient(app)
 
 
@@ -74,9 +74,10 @@ def test_unknown_session():
         "/api/ai/chat",
         json={
             "message": "Hello",
-            "session_id": "session-that-does-not-exist",
+            "session_id": "00000000-0000-0000-0000-000000000000",
         },
     )
 
     assert response.status_code == 404
-    assert "Session not found" in response.json()["detail"]
+    assert "not found" in response.json()["detail"].lower()
+

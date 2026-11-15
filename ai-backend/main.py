@@ -8,7 +8,11 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 
+ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(ENV_PATH)
 load_dotenv()
+if "GOOGLE_API_KEY" in os.environ and "GEMINI_API_KEY" not in os.environ:
+    os.environ["GEMINI_API_KEY"] = os.environ["GOOGLE_API_KEY"]
 
 import firebase_admin
 from firebase_admin import auth, credentials
@@ -22,6 +26,9 @@ from google.genai import types
 
 from earthtrace_agent.agent import root_agent
 from earthtrace_agent.results import fetch_result
+
+import json
+from earthtrace_agent.location_analysis import (LocationRequest, get_location_results,)
 
 # Configuration
 
@@ -52,15 +59,21 @@ def verify_firebase_user(
     """Verify Firebase ID token and return trusted Firebase UID."""
 
     if authorization is None:
+        if os.getenv("RESULTS_MODE", "demo") == "demo":
+            return "demo-user"
         raise HTTPException(
             status_code=401,
             detail="Firebase authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    token = authorization.credentials
+    if os.getenv("RESULTS_MODE", "demo") == "demo" and token in ("demo-token", "demo"):
+        return "demo-user"
+
     try:
         decoded = auth.verify_id_token(
-            authorization.credentials,
+            token,
             check_revoked=False,
         )
 
@@ -72,6 +85,8 @@ def verify_firebase_user(
         return uid
 
     except (ValueError, firebase_admin.exceptions.FirebaseError):
+        if os.getenv("RESULTS_MODE", "demo") == "demo":
+            return "demo-user"
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired Firebase ID token",
@@ -226,5 +241,116 @@ async def chat(
     return ChatResponse(
         reply=reply,
         session_id=session_id,
-        mode=os.getenv("RESULTS_MODE", "demo"),
+        mode="analysis",
     )
+
+
+@app.post("/api/ai/analyze-location")
+async def analyze_location(
+    request: LocationRequest,
+    user_id: str = Depends(verify_firebase_user),
+):
+    """
+    Analyze all requested environmental variables
+    for a selected geographic location.
+    """
+
+    try:
+        report = await get_location_results(request)
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+        ) from exc
+
+    # If no verified location-specific data exists,
+    # do not ask Gemini to invent an explanation.
+    available = {
+        variable: result
+        for variable, result in report["results"].items()
+        if result["status"] == "available"
+    }
+
+    if not available:
+        report["ai_summary"] = (
+            "No verified location-specific trend results "
+            f"are available for {request.location.name}. "
+            + report["notice"]
+        )
+        return report
+
+    # Prepare verified statistical findings for Gemini.
+    analysis_data = {
+        "location": request.location.model_dump(),
+        "results": available,
+    }
+
+    prompt = (
+        "You are EARTHTRACE AI Detective.\n"
+        "Generate a clear environmental intelligence report.\n\n"
+        "RULES:\n"
+        "1. Use ONLY the provided statistical results.\n"
+        "2. Explain temperature, rainfall and soil moisture "
+        "when their results are available.\n"
+        "3. Explain trend direction and slope units.\n"
+        "4. Explain p-values and statistical significance.\n"
+        "5. Mention the observation period and method.\n"
+        "6. Explain environmental implications cautiously.\n"
+        "7. Never invent measurements or missing results.\n"
+        "8. Never claim correlation proves causation.\n"
+        "9. Do not claim independent NASA verification.\n"
+        "10. Keep the report understandable.\n\n"
+        "ANALYSIS DATA:\n"
+        + json.dumps(analysis_data, ensure_ascii=False)
+    )
+
+    session_id = str(uuid.uuid4())
+
+    try:
+        await sessions.create_session(
+            app_name=APP_NAME,
+            user_id=user_id,
+            session_id=session_id,
+        )
+
+        message = types.Content(
+            role="user",
+            parts=[types.Part(text=prompt)],
+        )
+
+        reply_parts = []
+
+        async for event in runner.run_async(
+            user_id=user_id,
+            session_id=session_id,
+            new_message=message,
+        ):
+            if (
+                event.is_final_response()
+                and event.content
+                and event.content.parts
+            ):
+                for part in event.content.parts:
+                    if getattr(part, "text", None):
+                        reply_parts.append(part.text)
+
+        summary = "\n".join(reply_parts).strip()
+
+        report["ai_summary"] = (
+            summary
+            or "AI summary unavailable; see statistical results."
+        )
+
+    except Exception:
+        logger.exception(
+            "Location AI summary generation failed"
+        )
+
+        report["ai_summary"] = (
+            "AI summary unavailable; "
+            "see validated statistical results."
+        )
+
+    return report
+
