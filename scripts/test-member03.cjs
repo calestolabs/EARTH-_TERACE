@@ -1,0 +1,26 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+process.chdir(path.resolve(__dirname,'..'));
+const ts=require('typescript');
+require.extensions['.ts']=(m,f)=>m._compile(ts.transpileModule(fs.readFileSync(f,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,f);
+const {anomalies,yearChange,standardize,compareRows,trendClass}=require('../lib/member03.ts');
+const {annual}=require('../lib/analysis.ts');
+const flat=Array.from({length:10},(_,i)=>({year:2000+i,value:5}));
+assert.equal(anomalies(flat,2).flags.length,0);
+assert.ok(standardize(flat).points.every(p=>p.z===0));
+assert.equal(anomalies(flat.slice(0,4),2).eligible,false);
+const spike=flat.map((p,i)=>({...p,value:i===9?100:5}));
+assert.deepEqual(anomalies(spike,2).flags.map(p=>p.year),[2009]);
+assert.equal(yearChange(spike,2000,2009).difference,95);
+assert.equal(yearChange(spike,1999,2009),null);
+assert.equal(yearChange(spike,2009,2000).difference,-95);
+assert.equal(trendClass(flat),'uncertain');
+assert.equal(trendClass(flat.slice(0,4)),'insufficient');
+assert.equal(trendClass(flat.map((p,i)=>({...p,value:i}))),'increasing');
+assert.equal(trendClass(flat.map((p,i)=>({...p,value:-i}))),'decreasing');
+const rows=compareRows({rainfall:flat,soil:flat.slice(1)},true);assert.equal(rows[0].soil,null);
+const data=JSON.parse(fs.readFileSync('public/data/climate.json','utf8'));
+const geo=JSON.parse(fs.readFileSync('public/data/geoBoundaries-LKA-ADM2_simplified.geojson','utf8'));
+assert.equal(geo.features.length,25);assert.equal(new Set(geo.features.map(f=>f.properties.shapeName)).size,25);
+assert.deepEqual(geo.features.map(f=>f.properties.shapeName).sort(),Object.keys(data).sort());
+let count=0;for(const series of Object.values(data))for(const v of ['rainfall','temperature','soil']){const r=annual(series[v],v,'2004-01-01','2024-12-31');const z=anomalies(r.points,2);assert.ok(z.points.every(p=>Number.isFinite(p.z)));count++;}
+console.log('PASS anomaly/constant/short/missing-year/difference/trend tests; 25 boundary joins; '+count+' real series.');
