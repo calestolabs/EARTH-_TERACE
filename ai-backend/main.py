@@ -13,6 +13,8 @@ load_dotenv(ENV_PATH)
 load_dotenv()
 if "GOOGLE_API_KEY" in os.environ and "GEMINI_API_KEY" not in os.environ:
     os.environ["GEMINI_API_KEY"] = os.environ["GOOGLE_API_KEY"]
+elif "GEMINI_API_KEY" in os.environ and "GOOGLE_API_KEY" not in os.environ:
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 import firebase_admin
 from firebase_admin import auth, credentials
@@ -35,10 +37,7 @@ from earthtrace_agent.location_analysis import (LocationRequest, get_location_re
 APP_NAME = "earthtrace_agent"
 logger = logging.getLogger(__name__)
 
-FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
-
-if not FIREBASE_PROJECT_ID:
-    raise RuntimeError("FIREBASE_PROJECT_ID is missing from .env")
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "new-earthtrace-56b71")
 
 # Firebase Admin Initialization
 
@@ -382,4 +381,11 @@ async def analyze_location(
         )
 
     return report
+
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", os.getenv("HTTP_PORT", 8000)))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
+
 

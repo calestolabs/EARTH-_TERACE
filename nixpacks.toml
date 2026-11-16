@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312"]
+
+[phases.install]
+cmds = ["python -m pip install -r ai-backend/requirements.txt"]
+
+[start]
+cmd = "cd ai-backend && python main.py"
