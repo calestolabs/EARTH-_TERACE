@@ -19,7 +19,7 @@ def get_investigation_results(
 
 root_agent = Agent(
     name="earthtrace_detective",
-    model=os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+    model=os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
     description=(
         "EARTHTRACE AI Detective for environmental "
         "trend interpretation."

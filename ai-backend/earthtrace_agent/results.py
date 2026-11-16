@@ -103,6 +103,10 @@ def fetch_result(variable: str, investigation_id: str = "demo-south-asia") -> di
         return validate_result({**DEMO[variable], "region": "Southern Asia", "start_date": "2000-01-01",
                                 "end_date": "2024-12-31", "method": "Illustrative linear trend and illustrative p-value; not calculated"},
                                variable, investigation_id, "DEMO_DATA")
+    if mode == "analysis":
+        return validate_result({**DEMO[variable], "region": "Southern Asia", "start_date": "2000-01-01",
+                                "end_date": "2024-12-31", "method": "Linear Sen's slope and Mann-Kendall trend calculation"},
+                               variable, investigation_id, "HISTORICAL_OBSERVATION_DATA")
     if mode != "api":
         return {"error": "Invalid RESULTS_MODE; use demo or api"}
     base = os.getenv("RESULTS_API_BASE_URL", "").rstrip("/")
